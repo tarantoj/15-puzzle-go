@@ -9,7 +9,6 @@ import (
 
 type node struct {
 	tiles  []int
-	f      int // g + h
 	g      int // cost to get here
 	parent *node
 	a      action
@@ -53,6 +52,10 @@ func (n node) zero() int {
 	return zero
 }
 
+func (n node) f() int {
+	return n.g + n.heuristic()
+}
+
 type action uint8
 
 const (
@@ -66,23 +69,25 @@ func (n node) permutations() []node {
 
 	var nodes []node
 
-	if n.zero() > 3 {
+	create := func(n node) node {
 		var new node
 		tmp := make([]int, n.length())
 		copy(tmp, n.tiles)
 		new.tiles = tmp
+		new.g = n.g + 1
+		new.parent = &n
+	}
+
+	if n.zero() > 3 {
+		new := create(n)
 		new.tiles[n.zero()] = new.tiles[n.zero()-4]
 		new.tiles[n.zero()-4] = 0
 		new.a = up
-		new.g = n.g + 1
 		nodes = append(nodes, new)
 	}
 
 	if (n.zero()+1)%4 != 0 {
-		var new node
-		tmp := make([]int, n.length())
-		copy(tmp, n.tiles)
-		new.tiles = tmp
+		new := create(n)
 		new.tiles[n.zero()] = new.tiles[n.zero()+1]
 		new.tiles[n.zero()+1] = 0
 		new.a = right
@@ -91,10 +96,7 @@ func (n node) permutations() []node {
 	}
 
 	if n.zero() < 12 {
-		var new node
-		tmp := make([]int, n.length())
-		copy(tmp, n.tiles)
-		new.tiles = tmp
+		new := create(n)
 		new.tiles[n.zero()] = new.tiles[n.zero()+4]
 		new.tiles[n.zero()+4] = 0
 		new.a = down
@@ -103,10 +105,7 @@ func (n node) permutations() []node {
 	}
 
 	if n.zero()%4 != 0 {
-		var new node
-		tmp := make([]int, n.length())
-		copy(tmp, n.tiles)
-		new.tiles = tmp
+		new := create(n)
 		new.tiles[n.zero()] = new.tiles[n.zero()-1]
 		new.tiles[n.zero()-1] = 0
 		new.a = left
@@ -133,7 +132,7 @@ func (pq PriorityQueue) Len() int { return len(pq) }
 
 func (pq PriorityQueue) Less(i, j int) bool {
 	// We want Pop to lowest cost, so we use less than.
-	return pq[i].f > pq[j].f
+	return pq[i].f() > pq[j].f()
 }
 
 func (pq PriorityQueue) Swap(i, j int) {
